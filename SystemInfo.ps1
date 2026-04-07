@@ -6,11 +6,12 @@ Add-Type -AssemblyName System.Drawing
 # --- Sistem Bilgilerini Çekme ===
 $cpu = (Get-CimInstance Win32_Processor).Name
 
-$ramMems = Get-CimInstance Win32_PhysicalMemory
+$ramMems = @(Get-CimInstance Win32_PhysicalMemory)
 $ramBytes = ($ramMems | Measure-Object -Property Capacity -Sum).Sum
 $ramGB = [math]::Round($ramBytes / 1GB, 2)
 
-$smbiosType = $ramMems[0].SMBIOSMemoryType
+$ramMem = $ramMems[0]
+$smbiosType = $ramMem.SMBIOSMemoryType
 $ddrType = ""
 switch ($smbiosType) {
     20 { $ddrType = "DDR" }
@@ -22,9 +23,9 @@ switch ($smbiosType) {
     34 { $ddrType = "DDR5" }
     35 { $ddrType = "LPDDR5" }
 }
-$speed = $ramMems[0].Speed
-if (-not $speed) { $speed = $ramMems[0].ConfiguredClockSpeed }
-$mhzInfo = if ($speed) { "$speed MHz" } else { "" }
+$speed = $ramMem.Speed
+if (-not $speed) { $speed = $ramMem.ConfiguredClockSpeed }
+$mhzInfo = if ($speed) { "- $speed MHz" } else { "" }
 $ramText = ("$ramGB GB " + $ddrType + " " + $mhzInfo).Trim()
 
 $diskText = ""
