@@ -6,9 +6,26 @@ Add-Type -AssemblyName System.Drawing
 # --- Sistem Bilgilerini Çekme ===
 $cpu = (Get-CimInstance Win32_Processor).Name
 
-$ramBytes = (Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property Capacity -Sum).Sum
+$ramMems = Get-CimInstance Win32_PhysicalMemory
+$ramBytes = ($ramMems | Measure-Object -Property Capacity -Sum).Sum
 $ramGB = [math]::Round($ramBytes / 1GB, 2)
-$ramText = "$ramGB GB"
+
+$smbiosType = $ramMems[0].SMBIOSMemoryType
+$ddrType = ""
+switch ($smbiosType) {
+    20 { $ddrType = "DDR" }
+    21 { $ddrType = "DDR2" }
+    24 { $ddrType = "DDR3" }
+    26 { $ddrType = "DDR4" }
+    29 { $ddrType = "LPDDR3" }
+    30 { $ddrType = "LPDDR4" }
+    34 { $ddrType = "DDR5" }
+    35 { $ddrType = "LPDDR5" }
+}
+$speed = $ramMems[0].Speed
+if (-not $speed) { $speed = $ramMems[0].ConfiguredClockSpeed }
+$mhzInfo = if ($speed) { "$speed MHz" } else { "" }
+$ramText = ("$ramGB GB " + $ddrType + " " + $mhzInfo).Trim()
 
 $diskText = ""
 $disks = Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3"
@@ -35,7 +52,8 @@ foreach ($gpu in $gpus) {
                 $maxPowerMatch = $nvidiaSmi | Select-String -Pattern "Max Power Limit\s+:\s+(.*)" | Select-Object -First 1
                 if ($maxPowerMatch) {
                     $val = $maxPowerMatch.Matches[0].Groups[1].Value
-                    $wattageInfo = " (Maksimum Güç Sınırı: $val)"
+                    $val = $val -replace "\s?W", "W"
+                    $wattageInfo = " (Ekran Kartı Gücü: $val)"
                 }
             }
         } catch { }
